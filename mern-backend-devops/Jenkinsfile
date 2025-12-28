@@ -1,0 +1,93 @@
+pipeline {
+    agent any
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(daysToKeepStr: '2'))
+    }
+
+    environment {
+        IMAGE_NAME = 'yourdockerhub/backend'
+        IMAGE_TAG = 'latest'
+        SONAR_HOST_URL = 'http://<SONAR-IP>:9000'
+        DOCKER_CREDS = 'docker_token'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/yourname/mern-backend-devops.git'
+            }
+        }
+
+        stage('SonarQube Scan') {
+            steps {
+                dir('backend') {
+                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                        sh """
+                        sonar-scanner \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                dir('backend') {
+                    script {
+                        dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                        docker.withRegistry('', DOCKER_CREDS) {
+                            dockerImage.push()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Trivy Scan') {
+            steps {
+                sh """
+                trivy image ${IMAGE_NAME}:${IMAGE_TAG} \
+                --severity HIGH,CRITICAL \
+                --format html \
+                -o trivy-report.html
+                """
+            }
+        }
+
+        stage('Deploy via ArgoCD') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'argocd-cli-creds',
+                usernameVariable: 'ARGO_USER',
+                passwordVariable: 'ARGO_PASS')]) {
+
+                    sh """
+                    argocd login <ARGOCD-IP>:<PORT> \
+                    --username $ARGO_USER \
+                    --password $ARGO_PASS \
+                    --insecure
+
+                    argocd app sync backend
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            publishHTML(target: [
+                reportName: 'Trivy Report',
+                reportFiles: 'trivy-report.html',
+                reportDir: '',
+                keepAll: true
+            ])
+            cleanWs()
+        }
+    }
+}
