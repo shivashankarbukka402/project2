@@ -5,8 +5,6 @@ pipeline {
         IMAGE_NAME = 'shiva9828/devops-demo'
         IMAGE_TAG = 'latest'
         DOCKERFILE_BASE = 'Dockerfile'
-        DOCKER_REGISTRY_CRED_ID = 'docker_token'
-        SONAR_HOST_URL='http://3.111.214.251:9000'
     }
 
     stages {
@@ -37,8 +35,8 @@ pipeline {
                                 sonar-scanner \
                                   -Dsonar.projectKey=java-devops-project \
                                   -Dsonar.sources=. \
-                                  -Dsonar.host.url=${env.SONAR_HOST_URL} \
-                                  -Dsonar.token=${SONAR_TOKEN}
+                                  -Dsonar.host.url=http://3.111.214.251:9000 \
+                                  -Dsonar.login=$SONAR_TOKEN
                             """
                         }
                     }
