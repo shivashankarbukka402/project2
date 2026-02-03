@@ -6,7 +6,7 @@ pipeline {
         IMAGE_TAG = 'latest'
         DOCKERFILE_BASE = 'Dockerfile'
         DOCKER_REGISTRY_CRED_ID = 'docker_token'
-        SONAR_HOST_URL='http://13.232.171.47:9000'
+        SONAR_HOST_URL='http://3.111.214.251:9000'
     }
 
     stages {
@@ -35,7 +35,7 @@ pipeline {
                         withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                             sh """
                                 sonar-scanner \
-                                  -Dsonar.projectKey=backend \
+                                  -Dsonar.projectKey=java-devops-project \
                                   -Dsonar.sources=. \
                                   -Dsonar.host.url=${env.SONAR_HOST_URL} \
                                   -Dsonar.token=${SONAR_TOKEN}
