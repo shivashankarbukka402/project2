@@ -21,6 +21,7 @@ pipeline {
                 script {
                    dir('java-devops-project') {   
                       sh 'mvn clean package'
+                      sh 'mvn clean compile'
                    }
                 }
             }
