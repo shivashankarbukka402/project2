@@ -21,7 +21,6 @@ pipeline {
                 script {
                    dir('java-devops-project') {   
                       sh 'mvn clean package'
-                      sh 'mvn clean compile'
                    }
                 }
             }
@@ -35,7 +34,8 @@ pipeline {
                             sh """
                                 sonar-scanner -X \
                                   -Dsonar.projectKey=java-devops-project \
-                                  -Dsonar.sources=. \
+                                  -Dsonar.sources=src \
+                                  -Dsonar.java.binaries=target
                                   -Dsonar.host.url=http://3.111.214.251:9000 \
                                   -Dsonar.login=$SONAR_TOKEN
                             """
