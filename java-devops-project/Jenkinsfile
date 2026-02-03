@@ -1,0 +1,76 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'shiva9828/devops-demo'
+        IMAGE_TAG = 'latest'
+        DOCKERFILE_BASE = 'Dockerfile'
+        DOCKER_REGISTRY_CRED_ID = 'docker_token'
+        SONAR_HOST_URL='http://13.232.171.47:9000'
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main',
+                url: 'https://github.com/shivashankarbukka402/project2.git'
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                script {
+                   dir('java-devops-project') {   
+                      sh 'mvn clean package'
+                   }
+                }
+            }
+        }
+
+        stage('Sonar Code Quality check') {
+            steps {
+                script {
+                    dir('java-devops-project') {
+                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                            sh """
+                                sonar-scanner \
+                                  -Dsonar.projectKey=backend \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.host.url=${env.SONAR_HOST_URL} \
+                                  -Dsonar.token=${SONAR_TOKEN}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('Docker Build and Push') {
+            steps {
+                script { 
+                    sh '''
+                        ls -lrt
+                    '''
+                    dir('java-devops-project') {
+                        dockerImage = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", "-f ${DOCKERFILE_BASE} .")
+                        docker.withRegistry('', "${DOCKER_REGISTRY_CRED_ID}") { 
+                            dockerImage.push() 
+                        }
+                    }
+                }
+            }
+        }
+         stage('Trivy Scan') {
+            steps {
+                sh '''
+                    trivy image \
+                    --severity HIGH,CRITICAL \
+                    --format template \
+                    --template '@/home/ubuntu/trivy/trivy_html.tpl' \
+                    --output 'trivy_backend.html' ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+    }
+}
+  
